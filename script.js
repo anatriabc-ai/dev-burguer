@@ -150,7 +150,8 @@ checkoutBtn.addEventListener("click", function() {
     const totalPedido = cartTotal.textContent;
     const method = paymentMethod.value; 
     
-    const message = encodeURIComponent(`🍔 *NOVO PEDIDO* 🍔\n\n${cartItems}\n\n*Total:* ${totalPedido}\n*Endereço:* ${addressInput.value}\n*Pagamento:* ${method}`);
+    // Altere apenas esta linha da message para garantir as quebras de linha:
+    const message = encodeURIComponent(`🍔 *NOVO PEDIDO* 🍔\n\n${cartItems}\n\n*Total:* ${totalPedido}\n*Endereço:* ${addressInput.value}\n*Forma de Pagamento:* ${method}`);
     
     const phone = "5511912837867" // <--- COLOQUE SEU NÚMERO AQUI
 
@@ -177,3 +178,4 @@ if(isOpen){
     spanItem.classList.remove("bg-green-600");
     spanItem.classList.add("bg-red-500");
 }
+
