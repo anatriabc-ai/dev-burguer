@@ -8,45 +8,42 @@ const closeModalBtn = document.getElementById("close-modal-btn")
 const cartCount = document.getElementById("cart-count")
 const addressInput = document.getElementById("address")
 const addressWarn = document.getElementById("address-warn")
+const paymentMethod = document.getElementById("payment-method")
 
 let cart = [];
 
 // Abrir o modal do carrinho
 cartBtn.addEventListener("click", function() {
+    updateCartModal();
     cartModal.style.display = "flex"
 })
 
-// Fechar o modal quando clicar no botão fechar
-closeModalBtn.addEventListener("click", function(){
-    cartModal.style.display = "none"
-})
-
-// Fechar o modal quando clicar fora dele (no fundo cinza)
-cartModal.addEventListener("click", function(event){
+// Fechar o modal quando clicar fora
+cartModal.addEventListener("click", function(event) {
     if(event.target === cartModal){
         cartModal.style.display = "none"
     }
 })
 
-// Adicionar ao carrinho
-menu.addEventListener("click", function(event){
+closeModalBtn.addEventListener("click", function() {
+    cartModal.style.display = "none"
+})
+
+menu.addEventListener("click", function(event) {
     let parentButton = event.target.closest(".add-to-cart-btn")
 
     if(parentButton){
         const name = parentButton.getAttribute("data-name")
         const price = parseFloat(parentButton.getAttribute("data-price"))
-        
-        // Adicionar no carrinho
         addToCart(name, price)
     }
 })
 
-// Função para adicionar ao carrinho
-function addToCart(name, price){
+// Função para adicionar no carrinho
+function addToCart(name, price) {
     const existingItem = cart.find(item => item.name === name)
 
     if(existingItem){
-        // Se o item já existe, aumenta apenas a quantidade +1
         existingItem.quantity += 1;
     } else {
         cart.push({
@@ -59,55 +56,48 @@ function addToCart(name, price){
     updateCartModal()
 }
 
-
 // Atualiza o carrinho visualmente
-function updateCartModal(){
+function updateCartModal() {
     cartItemsContainer.innerHTML = "";
     let total = 0;
 
     cart.forEach(item => {
         const cartItemElement = document.createElement("div");
-        cartItemElement.classList.add("flex", "justify-between", "mb-4", "flex-col");
+        cartItemElement.classList.add("flex", "justify-between", "mb-4", "flex-col")
 
         cartItemElement.innerHTML = `
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="font-bold">${item.name}</p>
+                    <p class="font-medium">${item.name}</p>
                     <p>Qtd: ${item.quantity}</p>
                     <p class="font-medium mt-2">R$ ${item.price.toFixed(2)}</p>
                 </div>
-
                 <button class="remove-from-cart-btn" data-name="${item.name}">
                     Remover
                 </button>
             </div>
-        `;
-
+        `
         total += item.price * item.quantity;
+        cartItemsContainer.appendChild(cartItemElement)
+    })
 
-        cartItemsContainer.appendChild(cartItemElement);
-    });
-
-    // Atualiza o valor total no modal
     cartTotal.textContent = total.toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL"
     });
 
-    // Atualiza a contagem de itens no botão vermelho (footer)
     cartCount.innerHTML = cart.length;
 }
 
 // Função para remover item do carrinho
-cartItemsContainer.addEventListener("click", function (event){
+cartItemsContainer.addEventListener("click", function (event) {
     if(event.target.classList.contains("remove-from-cart-btn")){
-        const name = event.target.getAttribute("data-name");
-
+        const name = event.target.getAttribute("data-name")
         removeItemCart(name);
     }
-});
+})
 
-function removeItemCart(name){
+function removeItemCart(name) {
     const index = cart.findIndex(item => item.name === name);
 
     if(index !== -1){
@@ -124,8 +114,7 @@ function removeItemCart(name){
     }
 }
 
-// Monitorar o que o usuário digita no input de endereço
-addressInput.addEventListener("input", function(event){
+addressInput.addEventListener("input", function(event) {
     let inputValue = event.target.value;
 
     if(inputValue !== ""){
@@ -135,9 +124,8 @@ addressInput.addEventListener("input", function(event){
 })
 
 // Finalizar pedido
-checkoutBtn.addEventListener("click", function(){
-
-    // Verificar se o restaurante está aberto (opcional, mas bom ter)
+checkoutBtn.addEventListener("click", function() {
+    
     const isOpen = checkRestaurantOpen();
     if(!isOpen){
         alert("RESTAURANTE FECHADO NO MOMENTO!")
@@ -145,6 +133,7 @@ checkoutBtn.addEventListener("click", function(){
     }
 
     if(cart.length === 0) return;
+    
     if(addressInput.value === ""){
         addressWarn.classList.remove("hidden")
         addressInput.classList.add("border-red-500")
@@ -154,25 +143,28 @@ checkoutBtn.addEventListener("click", function(){
     // Enviar o pedido para API do WhatsApp
     const cartItems = cart.map((item) => {
         return (
-            ` ${item.name} Quantidade: (${item.quantity}) Preço: R$${item.price} |`
+            `*${item.name}* (Qtd: ${item.quantity}) | `
         )
-    }).join("")
+    }).join("\n")
 
-    const message = encodeURIComponent(cartItems)
-    const phone = "5511912837867" // Exemplo: 5511999999999
+    const totalPedido = cartTotal.textContent;
+    const method = paymentMethod.value; 
+    
+    const message = encodeURIComponent(`🍔 *NOVO PEDIDO* 🍔\n\n${cartItems}\n\n*Total:* ${totalPedido}\n*Endereço:* ${addressInput.value}\n*Pagamento:* ${method}`);
+    
+    const phone = "5511912837867" // <--- COLOQUE SEU NÚMERO AQUI
 
-    window.open(`https://wa.me/${phone}?text=${message} Endereço: ${addressInput.value}`, "_blank")
+    window.open(`https://wa.me/${phone}?text=${message}`, "_blank")
 
-    // Limpar o carrinho após enviar
     cart = [];
     updateCartModal();
 })
 
-// Verificar a hora e manipular o card da data
-function checkRestaurantOpen(){
+// Verificar a hora e manipular o card do horário
+function checkRestaurantOpen() {
     const data = new Date();
     const hora = data.getHours();
-    return hora >= 18 && hora < 22; // true (está aberto)
+    return hora >= 18 && hora < 22; 
 }
 
 const spanItem = document.getElementById("date-span")
