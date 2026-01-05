@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Menezes Salgados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-950 h-screen flex items-center justify-center px-4">
+    
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-zinc-900">Área Restrita</h2>
+            <p class="text-gray-500 mt-2">Entre com suas credenciais de administrador</p>
+        </div>
+
+        <form id="login-form" class="space-y-5">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">E-mail</label>
+                <input type="email" id="email" required 
+                    class="w-full border border-gray-300 p-3 rounded-xl outline-none focus:border-green-500 transition-all"
+                    placeholder="admin@exemplo.com">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Senha</label>
+                <input type="password" id="password" required 
+                    class="w-full border border-gray-300 p-3 rounded-xl outline-none focus:border-green-500 transition-all"
+                    placeholder="••••••••">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-zinc-900 text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transform active:scale-95 transition-all shadow-lg">
+                Acessar Painel
+            </button>
+
+            <p id="login-error" class="text-red-500 text-sm hidden text-center font-medium">
+                ⚠️ E-mail ou senha incorretos!
+            </p>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+
+        // CONFIGURAÇÃO DO SEU PROJETO (Baseado nas suas imagens anteriores)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCXkmrC3qxbLUdBdZYeko-088BdrzXn9MQ",
+            authDomain: "devburguer-58615.firebaseapp.com",
+            projectId: "devburguer-58615",
+            storageBucket: "devburguer-58615.firebasestorage.app",
+            messagingSenderId: "235441722898",
+            appId: "1:235441722898:web:de9abf01add7e68a59eacb"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const loginForm = document.getElementById("login-form");
+        const errorMsg = document.getElementById("login-error");
+
+        loginForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            // Tentativa de login no Firebase
+            signInWithEmailAndPassword(auth, email, password)
+                .then(() => {
+                    // Se der certo, vai para o seu Painel de Controle
+                    window.location.href = "admin.html";
+                })
+                .catch((error) => {
+                    // Se der errado, mostra a mensagem de erro
+                    errorMsg.classList.remove("hidden");
+                    console.error("Erro:", error.code);
+                });
+        });
+    </script>
+</body>
+</html>

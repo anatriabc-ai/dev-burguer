@@ -1,21 +1,200 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="./styles/output.css">
-    <title>Painel Admin - Pedidos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Painel Administrativo - Menezes Salgados</title>
 </head>
-<body class="bg-zinc-100 min-h-screen p-5">
-    
-    <header class="bg-red-500 p-4 rounded-t-lg shadow-lg mb-6">
-        <h1 class="text-white text-2xl font-bold text-center">🍔 Pedidos Recebidos</h1>
-    </header>
 
-    <main id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <p class="text-center text-gray-500 col-span-full">Aguardando novos pedidos...</p>
-    </main>
+<body class="bg-gray-100 min-h-screen">
 
-    <script src="admin.js"></script>
+    <div id="login-overlay" class="fixed inset-0 bg-zinc-950 z-[999] flex items-center justify-center px-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-zinc-900">Menezes Salgados</h2>
+                <p class="text-gray-500 mt-2">Acesso restrito ao administrador</p>
+            </div>
+            <form id="login-form" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">E-mail</label>
+                    <input type="email" id="login-email" required class="w-full border border-gray-300 p-3 rounded-xl outline-none focus:border-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Senha</label>
+                    <input type="password" id="login-password" required class="w-full border border-gray-300 p-3 rounded-xl outline-none focus:border-green-500">
+                </div>
+                <button type="submit" class="w-full bg-zinc-900 text-white py-3 rounded-xl font-bold hover:bg-zinc-800 shadow-lg transition-all">
+                    Entrar no Painel
+                </button>
+                <p id="login-error" class="text-red-500 text-sm hidden text-center font-medium">⚠️ E-mail ou senha inválidos!</p>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-content" class="hidden">
+        <header class="bg-zinc-900 py-6 mb-8">
+            <div class="container mx-auto px-4 flex justify-between items-center">
+                <div>
+                    <h1 class="text-white text-3xl font-bold">Painel de Controle</h1>
+                    <p class="text-gray-400">Gerencie seus produtos e pedidos em tempo real</p>
+                </div>
+                <button id="logout-btn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    <i class="fa fa-sign-out-alt mr-1"></i> Sair do Sistema
+                </button>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
+
+            <div class="space-y-8">
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i class="fa fa-camera text-blue-500"></i> Personalização
+                    </h2>
+                    
+                    <div class="flex flex-col items-center gap-4 mb-6">
+                        <p class="font-bold text-gray-700 self-start">Foto de Perfil (Logo):</p>
+                        <img id="profile-img-preview" src="assets/hamb-1.png" 
+                            class="w-32 h-32 rounded-full object-cover border-4 border-zinc-900 shadow-lg">
+                        
+                        <div class="w-full flex flex-col gap-2">
+                            <label for="input-profile-image" class="bg-blue-600 text-white px-4 py-2 rounded-md cursor-pointer hover:bg-blue-700 transition-all font-bold text-center w-full">
+                                SELECIONAR NOVA LOGO
+                            </label>
+                            <input type="file" id="input-profile-image" class="hidden" accept="image/*">
+                            
+                            <button id="save-profile-btn" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold hidden hover:bg-green-700 transition-all shadow-md uppercase">
+                                SALVAR LOGO
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <label class="font-bold text-gray-700 mb-2 block">Imagem de Fundo (Banner):</label>
+                        <div class="w-full h-32 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-100 mb-3 relative">
+                            <img id="bg-img-preview" class="w-full h-full object-cover hidden" alt="Prévia do Fundo">
+                            <span id="bg-placeholder" class="text-gray-400 text-sm">Nenhuma imagem selecionada</span>
+                        </div>
+                        <input type="file" id="bg-input" accept="image/*, video/mp4" class="w-full border p-2 rounded mb-2">
+                        <button id="save-bg-btn" class="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 uppercase transition-all">
+                            Salvar Banner no Firebase
+                        </button>
+                    </div>
+                </section>
+
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 text-center">
+                    <h2 class="text-xl font-bold mb-4 flex justify-center items-center gap-2">
+                        <i class="fa fa-store text-purple-500"></i> Status da Loja
+                    </h2>
+                    <p class="mb-4 font-medium text-gray-700">A loja está atualmente: <span id="loja-status-texto" class="font-bold">Carregando...</span></p>
+                    <button id="btn-toggle-loja" class="w-full px-8 py-4 rounded-full text-white font-bold transition-all active:scale-95 shadow-md">
+                        CARREGANDO...
+                    </button>
+                </section>
+
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i class="fa fa-plus-circle text-green-500"></i> Novo Produto
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nome do Produto</label>
+                            <input type="text" id="product-name" required class="w-full border p-2 rounded-lg outline-none focus:border-green-500" placeholder="Ex: Coxinha 100 unid...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Descrição</label>
+                            <textarea id="product-desc" required class="w-full border p-2 rounded-lg outline-none focus:border-green-500 h-24 resize-none" placeholder="Detalhes dos ingredientes..."></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Preço (R$)</label>
+                                <input type="number" step="0.01" id="product-price" required class="w-full border p-2 rounded-lg outline-none focus:border-green-500" placeholder="68.00">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Categoria</label>
+                                <select id="product-category" class="w-full border p-2 rounded-lg outline-none focus:border-green-500 bg-white">
+                                    <option value="savory">Salgado</option>
+                                    <option value="candy">Doce</option>
+                                    <option value="combination">Combo</option>
+                                    <option value="drinks">Bebida</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 font-bold">Foto do Produto</label>
+                            <input type="file" id="image-input" accept="image/*" class="w-full border-2 border-dashed p-2 rounded-lg my-1 cursor-pointer hover:bg-gray-50" />
+                        </div>
+
+                        <button type="button" id="btn-cadastrar-produto" class="w-full bg-green-500 text-white py-3 rounded-lg font-bold hover:bg-green-600 transition-all shadow-md active:scale-95">
+                            CADASTRAR PRODUTO
+                        </button>
+                    </div>
+
+                    <hr class="my-8">
+                    <h3 class="font-bold text-gray-700 mb-4">Produtos no Cardápio</h3>
+                    <div id="admin-products-list" class="space-y-3"></div>
+                </section>
+            </div>
+
+            <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <i class="fa fa-shopping-bag text-red-500"></i> Pedidos Recentes
+                </h2>
+                <div id="orders-container" class="space-y-4 max-h-[1200px] overflow-y-auto pr-2">
+                    <p class="text-gray-500 italic text-center py-10">Aguardando novos pedidos...</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+        <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCXkmrC3qxbLUdBdZYeko-088BdrzXn9MQ",
+            authDomain: "devburguer-58615.firebaseapp.com",
+            projectId: "devburguer-58615",
+            storageBucket: "devburguer-58615.firebasestorage.app",
+            messagingSenderId: "235441722898",
+            appId: "1:235441722898:web:de9abf01add7e68a59eacb"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const loginOverlay = document.getElementById("login-overlay");
+        const adminContent = document.getElementById("admin-content");
+
+        // Verifica apenas a autenticação do Firebase
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loginOverlay.classList.add("hidden");
+                adminContent.classList.remove("hidden");
+            } else {
+                loginOverlay.classList.remove("hidden");
+                adminContent.classList.add("hidden");
+            }
+        });
+
+        // Lógica do formulário de login
+        document.getElementById("login-form").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const email = document.getElementById("login-email").value;
+            const pass = document.getElementById("login-password").value;
+
+            signInWithEmailAndPassword(auth, email, pass).catch(() => {
+                document.getElementById("login-error").classList.remove("hidden");
+            });
+        });
+    </script>
+
+    <script type="module" src="./admin.js"></script>
+
 </body>
 </html>
