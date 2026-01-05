@@ -14,6 +14,24 @@
     <title>Menezes Salgados & Cia - O melhor Salgado que você vai comer!</title>
 
     <style>
+        /* Força o Safari a respeitar as cores e remover o brilho padrão do sistema */
+        button, input, select, textarea {
+            -webkit-appearance: none;
+            appearance: none;
+            border-radius: 0; /* Opcional, se quiser bordas quadradas, ou mantenha suas classes do Tailwind */
+        }
+
+        /* Garante que botões com fundo colorido apareçam corretamente */
+        .bg-green-500, .bg-red-500, .bg-zinc-900 {
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* Resolve o problema de "texto branco no fundo branco" que ocorre as vezes no iOS */
+        #payment-method {
+            background-color: white !important;
+            color: black !important;
+        }
+
         .bounce {
             animation: bounce 0.4s ease;
         }
@@ -195,11 +213,11 @@
                 <p class="font-bold mt-4 mb-2">Endereço de entrega:</p>
                 <div class="flex gap-2 w-full items-center">
                     <input type="text" placeholder="Digite Rua, Número e Bairro..." id="address" class="flex-1 border-2 p-2 rounded outline-none focus:border-green-500 shadow-sm" />
-                    <button id="calc-shipping-btn" class="bg-green-500 text-white px-4 py-2 rounded ml-1 font-bold hover:bg-green-600 transition-all shadow-md h-11 flex items-center justify-center border-none">Calcular</button>
+                    <button type="button" id="calc-shipping-btn" class="...">Calcular</button>
                 </div>
                 <p class="text-red-500 text-xs hidden mt-2" id="address-warn">Digite um endereço válido!</p>
                 <p class="text-green-600 text-sm font-bold hidden mt-2 bg-green-100 p-2 rounded border border-green-200" id="shipping-value-display"></p>
-            </div>
+            </div>  
 
             <p class="font-bold mt-4">Forma de pagamento:</p>
             <select id="payment-method" class="w-full border-2 p-2 rounded my-1 bg-white outline-none">

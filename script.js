@@ -276,14 +276,17 @@ if(btnPickup){
     });
 }
 
+// Exemplo de como ajustar no script.js para o iPhone reconhecer a troca de cor
 if(btnDelivery){
     btnDelivery.addEventListener("click", () => {
         isPickup = false;
-        btnDelivery.classList.add("bg-green-500", "text-white");
-        btnPickup.classList.remove("bg-green-500", "text-white");
+        // Adicionando bordas explícitas para o iOS destacar o botão selecionado
+        btnDelivery.classList.add("bg-green-500", "text-white", "border-green-600");
+        btnPickup.classList.remove("bg-green-500", "text-white", "border-green-600");
+        btnPickup.classList.add("bg-white", "text-gray-800", "border-gray-300");
+        
         addressContainer.classList.remove("hidden");
         pickupOptionsContainer.classList.add("hidden");
-        pickupMethod = "";
         updateCartModal();
     });
 }
@@ -292,115 +295,131 @@ if(btnPickupSelf) btnPickupSelf.addEventListener("click", () => { pickupMethod =
 if(btnPickupApp) btnPickupApp.addEventListener("click", () => { pickupMethod = "Motorista de App (Uber/99)"; btnPickupApp.classList.add("bg-green-500", "text-white"); btnPickupSelf.classList.remove("bg-green-500", "text-white"); });
 
 if (calcShippingBtn) {
-    calcShippingBtn.addEventListener("click", async () => {
-        if (addressInput.value === "") { addressWarn.classList.remove("hidden"); return; }
+    calcShippingBtn.addEventListener("click", async (event) => {
+        // Previne qualquer comportamento padrão do botão no mobile
+        event.preventDefault(); 
+
+        if (addressInput.value === "") { 
+            addressWarn.classList.remove("hidden"); 
+            return; 
+        }
+
         const enderecoCliente = addressInput.value;
         const minhaLat = -23.647524;
         const minhaLon = -46.570151;
 
         try {
+            calcShippingBtn.disabled = true;
             calcShippingBtn.innerText = "Calculando...";
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCliente)}`);
+            
+            // Alterado para garantir HTTPS e adicionado cabeçalho de User-Agent (exigido por algumas redes móveis)
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCliente)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) throw new Error("Erro na rede");
+
             const data = await response.json();
 
-            if (data.length > 0) {
+            if (data && data.length > 0) {
                 const distancia = calcularDistanciaKM(minhaLat, minhaLon, parseFloat(data[0].lat), parseFloat(data[0].lon));
+                
+                // Lógica de preço
                 const hora = new Date().getHours();
                 let precoPorKm = (hora >= 15) ? 6.80 : 4.45;
 
                 deliveryFee = Math.max(8.00, distancia * precoPorKm);
+                
+                // Atualiza a interface
                 updateCartModal();
                 shippingValueDisplay.classList.remove("hidden");
                 shippingValueDisplay.innerText = `Distância: ${distancia.toFixed(2)}km | Frete: R$ ${deliveryFee.toFixed(2)}`;
                 addressWarn.classList.add("hidden");
-            } else { alert("Endereço não encontrado."); }
-        } catch (e) { console.error(e); } finally { calcShippingBtn.innerText = "Calcular"; }
+                
+                // No celular, dar um pequeno scroll para o usuário ver o valor
+                shippingValueDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            } else { 
+                alert("Endereço não encontrado. Tente incluir a cidade (SCS ou São Caetano)."); 
+            }
+        } catch (e) { 
+            console.error("Erro no cálculo:", e);
+            alert("Erro ao conectar com o serviço de mapas. Verifique sua internet."); 
+        } finally { 
+            calcShippingBtn.disabled = false;
+            calcShippingBtn.innerText = "Calcular"; 
+        }
     });
 }
-
 // 6. MODAL CONTROLES
 cartBtn.addEventListener("click", () => { updateCartModal(); cartModal.classList.remove("hidden"); cartModal.classList.add("flex"); });
 cartModal.addEventListener("click", (e) => { if(e.target === cartModal || e.target === closeModalBtn) { cartModal.classList.add("hidden"); cartModal.classList.remove("flex"); } });
 
 // 7. FINALIZAR PEDIDO
-// 7. FINALIZAR PEDIDO (VERSÃO CORRIGIDA PARA WHATSAPP)
-checkoutBtn.addEventListener("click", async () => {
-    const dateInput = document.getElementById("delivery-date");
-    const timeInput = document.getElementById("delivery-time");
-    const paymentMethod = document.getElementById("payment-method");
-    const observations = document.getElementById("observations");
+function renderProducts(productsToRender) {
+    const savoryContainer = document.getElementById("savory-section");
+    const drinkContainer = document.getElementById("drinks-section");
+    const candyContainer = document.getElementById("candy-section"); 
+    const combinationContainer = document.getElementById("combination-section");
 
-    const statusSnap = await getDoc(doc(db, "configuracoes", "status_loja"));
-    const lojaAberta = statusSnap.exists() ? statusSnap.data().aberto : false;
+    // Limpa os containers antes de preencher
+    if(savoryContainer) savoryContainer.innerHTML = "";
+    if(drinkContainer) drinkContainer.innerHTML = "";
+    if(candyContainer) candyContainer.innerHTML = "";
+    if(combinationContainer) combinationContainer.innerHTML = "";
 
-    if(!lojaAberta){ alert("O RESTAURANTE ESTÁ FECHADO NO MOMENTO!"); return; }
-    if (cart.length === 0) { alert("Seu carrinho está vazio!"); return; }
-    if (isPickup && pickupMethod === "") { alert("Por favor, selecione quem irá retirar!"); return; }
-    if (!isPickup && addressInput.value === "") { alert("Digite o endereço de entrega!"); return; }
-    if (!dateInput.value || !timeInput.value) { alert("Selecione data e horário!"); return; }
+    productsToRender.forEach(product => {
+        // Criamos o HTML do card uma única vez
+        const productHTML = `
+            <div class="flex gap-4 p-3 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+                <div class="relative overflow-hidden rounded-xl h-28 w-28 shrink-0 bg-gray-100">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover group-hover:scale-110 duration-500" onerror="this.src='assets/hamb-1.png'"/>
+                </div>
+                <div class="flex-1 flex flex-col justify-between">
+                    <div>
+                        <p class="font-bold text-gray-800 text-lg">${product.name}</p>
+                        <p class="text-sm text-gray-500 line-clamp-2">${product.description || ''}</p>
+                    </div>
+                    <div class="flex items-center justify-between mt-2">
+                        <p class="font-extrabold text-xl text-green-600">R$ ${Number(product.price).toFixed(2)}</p>
+                        <div class="flex items-center bg-gray-100 rounded-full p-1 gap-3 border border-gray-200">
+                            <button class="bg-white text-red-500 w-8 h-8 rounded-full flex items-center justify-center shadow-sm active:scale-90 transition-all remove-from-menu-btn" data-name="${product.name}">
+                                <i class="fa fa-minus text-xs"></i>
+                            </button>
+                            <span class="font-bold text-base min-w-[20px] text-center item-quantity text-gray-800" data-name="${product.name}">0</span>
+                            <button class="bg-zinc-900 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md active:scale-90 transition-all add-to-cart-btn" data-name="${product.name}" data-price="${product.price}">
+                                <i class="fa fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
 
-    try {
-        checkoutBtn.disabled = true;
-        checkoutBtn.innerText = "PROCESSANDO...";
-        
-        const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-        const totalValue = subtotal + (isPickup ? 0 : deliveryFee);
+        // Normaliza a categoria para evitar erros (tira espaços e deixa minúsculo)
+        const cat = (product.category || "").toLowerCase().trim();
 
-        // Salva os dados no banco de dados
-        const orderData = {
-            items: cart, 
-            total: totalValue, 
-            address: isPickup ? "Retirada" : addressInput.value,
-            scheduledDate: dateInput.value, 
-            scheduledTime: timeInput.value, 
-            payment: paymentMethod.value,
-            observations: observations.value, 
-            isPickup, 
-            pickupMethod, 
-            status: "pendente", 
-            createdAt: new Date()
-        };
+        // Distribui para o container correto baseado na palavra-chave
+        if (cat === "candy" || cat === "doce" || cat === "doces") {
+            if(candyContainer) candyContainer.insertAdjacentHTML('beforeend', productHTML);
+        } 
+        else if (cat === "drinks" || cat === "bebida" || cat === "bebidas") {
+            if(drinkContainer) drinkContainer.insertAdjacentHTML('beforeend', productHTML);
+        } 
+        else if (cat === "combination" || cat === "combo" || cat === "combos") {
+            if(combinationContainer) combinationContainer.insertAdjacentHTML('beforeend', productHTML);
+        } 
+        else {
+            // Tudo que não for doce, bebida ou combo, cai em Salgados (Savory)
+            if(savoryContainer) savoryContainer.insertAdjacentHTML('beforeend', productHTML);
+        }
+    });
 
-        await addDoc(collection(db, "pedidos"), orderData);
-
-        // MONTAGEM DA MENSAGEM COMPLETA PARA O WHATSAPP
-        const cartItems = cart.map(i => `• *${i.name}* (Qtd: ${i.quantity})`).join("\n");
-        
-        // Usamos template strings (com a crase ` ) para organizar o texto
-        const message = encodeURIComponent(
-`🍔 *NOVO PEDIDO - MENEZES SALGADOS*
-
-📋 *ITENS:*
-${cartItems}
-
-💰 *TOTAL:* R$ ${totalValue.toFixed(2)}
-------------------------------
-🚚 *TIPO:* ${isPickup ? "Retirada (" + pickupMethod + ")" : "Entrega"}
-🏠 *ENDEREÇO:* ${orderData.address}
-📅 *DATA:* ${dateInput.value.split('-').reverse().join('/')}
-⏰ *HORÁRIO:* ${timeInput.value}
-💳 *PAGAMENTO:* ${paymentMethod.value}
-
-📝 *OBSERVAÇÃO:* ${observations.value || "Nenhuma"}`
-        );
-
-        // Envia para o WhatsApp cadastrado
-        window.open(`https://wa.me/5511912837867?text=${message}`, "_blank");
-
-        // Limpeza do carrinho
-        cart = []; 
-        updateCartModal(); 
-        cartModal.classList.add("hidden");
-        alert("Pedido realizado com sucesso!");
-
-    } catch (e) { 
-        console.error(e);
-        alert("Erro ao salvar pedido."); 
-    } finally { 
-        checkoutBtn.disabled = false; 
-        checkoutBtn.innerText = "FINALIZAR PEDIDO"; 
-    }
-});
+    updateCartQuantities();
+}
 
 // --- FUNÇÕES AUXILIARES ---
 
