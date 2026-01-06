@@ -264,108 +264,69 @@ function updateCartQuantities() {
     });
 }
 
-// 5. LÓGICA DE ENTREGA / RETIRADA
-if(btnPickup){
-    btnPickup.addEventListener("click", () => {
-        isPickup = true;
-        btnPickup.classList.add("bg-green-500", "text-white");
-        btnDelivery.classList.remove("bg-green-500", "text-white");
-        addressContainer.classList.add("hidden");
-        pickupOptionsContainer.classList.remove("hidden");
-        updateCartModal();
-    });
-}
+// Variáveis dos elementos
 
+let metodoRecebimento = ""; // "entrega" ou "retirada"
+let quemRetira = ""; // "proprio" ou "motorista"
 
 // Clique em Entrega
 btnDelivery.addEventListener("click", () => {
-    // Estilo dos botões (iPhone Fix)
-    btnDelivery.classList.add("bg-green-500", "text-white");
-    btnDelivery.classList.remove("border-gray-300");
-    btnPickup.classList.remove("bg-green-500", "text-white");
-    btnPickup.classList.add("border-gray-300");
-
-    // Mostra endereço, esconde opções de retirada
+    metodoRecebimento = "entrega";
+    btnDelivery.classList.add("border-green-500", "bg-green-50");
+    btnPickup.classList.remove("border-green-500", "bg-green-50");
+    
     addressContainer.classList.remove("hidden");
     pickupOptionsContainer.classList.add("hidden");
-    
-    // Reseta o frete se necessário (opcional)
-    deliveryFee = 0; 
-    updateCartModal();
+    quemRetira = ""; // reseta a opção de retirada
 });
 
 // Clique em Retirada
 btnPickup.addEventListener("click", () => {
-    // Estilo dos botões (iPhone Fix)
-    btnPickup.classList.add("bg-green-500", "text-white");
-    btnPickup.classList.remove("border-gray-300");
-    btnDelivery.classList.remove("bg-green-500", "text-white");
-    btnDelivery.classList.add("border-gray-300");
-
-    // Esconde endereço, mostra opções de retirada
+    metodoRecebimento = "retirada";
+    btnPickup.classList.add("border-green-500", "bg-green-50");
+    btnDelivery.classList.remove("border-green-500", "bg-green-50");
+    
     addressContainer.classList.add("hidden");
     pickupOptionsContainer.classList.remove("hidden");
-    
-    // Zera o frete na retirada
-    deliveryFee = 0;
-    updateCartModal();
 });
 
+// Seleção de QUEM retira (Eu mesmo)
+btnPickupSelf.addEventListener("click", () => {
+    quemRetira = "Eu mesmo";
+    btnPickupSelf.classList.add("border-green-500", "bg-green-100");
+    btnPickupApp.classList.remove("border-green-500", "bg-green-100");
+});
 
-if(btnPickupSelf) btnPickupSelf.addEventListener("click", () => { pickupMethod = "O próprio cliente"; btnPickupSelf.classList.add("bg-green-500", "text-white"); btnPickupApp.classList.remove("bg-green-500", "text-white"); });
-if(btnPickupApp) btnPickupApp.addEventListener("click", () => { pickupMethod = "Motorista de App (Uber/99)"; btnPickupApp.classList.add("bg-green-500", "text-white"); btnPickupSelf.classList.remove("bg-green-500", "text-white"); });
-
-// Função para calcular frete adaptada para Android e iPhone
+// Seleção de QUEM retira (Motorista)
+btnPickupApp.addEventListener("click", () => {
+    quemRetira = "Motorista de App";
+    btnPickupApp.classList.add("border-green-500", "bg-green-100");
+    btnPickupSelf.classList.remove("border-green-500", "bg-green-100");
+});
 if (calcShippingBtn) {
-    calcShippingBtn.addEventListener("click", async (event) => {
-        event.preventDefault(); // Impede recarregamento no Android
-
+    calcShippingBtn.addEventListener("click", async () => {
+        if (addressInput.value === "") { addressWarn.classList.remove("hidden"); return; }
         const enderecoCliente = addressInput.value;
-        if (enderecoCliente === "") { 
-            addressWarn.classList.remove("hidden"); 
-            return; 
-        }
+        const minhaLat = -23.647524;
+        const minhaLon = -46.570151;
 
         try {
-            calcShippingBtn.disabled = true;
             calcShippingBtn.innerText = "Calculando...";
-            
-            // Forçamos o uso de HTTPS e adicionamos cabeçalhos para evitar bloqueio em redes móveis (4G/5G)
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCliente)}`, {
-                headers: { 'Accept': 'application/json' }
-            });
-
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCliente)}`);
             const data = await response.json();
 
-            if (data && data.length > 0) {
-                // Coordenadas da sua loja (Verifique se estão corretas)
-                const minhaLat = -23.647524;
-                const minhaLon = -46.570151;
-
+            if (data.length > 0) {
                 const distancia = calcularDistanciaKM(minhaLat, minhaLon, parseFloat(data[0].lat), parseFloat(data[0].lon));
-                
-                // Lógica de preço: R$ 4.45 base, R$ 6.80 após as 15h, mínimo de R$ 8.00
                 const hora = new Date().getHours();
                 let precoPorKm = (hora >= 15) ? 6.80 : 4.45;
+
                 deliveryFee = Math.max(8.00, distancia * precoPorKm);
-                
-                // Atualiza a tela
+                updateCartModal();
                 shippingValueDisplay.classList.remove("hidden");
                 shippingValueDisplay.innerText = `Distância: ${distancia.toFixed(2)}km | Frete: R$ ${deliveryFee.toFixed(2)}`;
                 addressWarn.classList.add("hidden");
-                
-                // Força a atualização do total no carrinho
-                updateCartModal();
-
-            } else { 
-                alert("Endereço não encontrado! Dica: Digite Rua, Número e Cidade (SCS)."); 
-            }
-        } catch (e) { 
-            alert("Erro de conexão. Verifique se o seu GPS ou Internet estão ativos."); 
-        } finally { 
-            calcShippingBtn.disabled = false;
-            calcShippingBtn.innerText = "Calcular"; 
-        }
+            } else { alert("Endereço não encontrado."); }
+        } catch (e) { console.error(e); } finally { calcShippingBtn.innerText = "Calcular"; }
     });
 }
 
@@ -428,93 +389,12 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Função para calcular a distância entre dois pontos (Fórmula de Haversine)
 function calcularDistanciaKM(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Raio da Terra em KM
+    const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-
-// Lógica do Botão Calcular
-if (calcShippingBtn) {
-    calcShippingBtn.addEventListener("click", async (event) => {
-        event.preventDefault(); // ESSENCIAL para Android não dar refresh
-
-        const enderecoCliente = addressInput.value.trim();
-        
-        if (enderecoCliente === "") {
-            addressWarn.classList.remove("hidden");
-            addressInput.classList.add("border-red-500");
-            return;
-        }
-
-        try {
-            calcShippingBtn.disabled = true;
-            calcShippingBtn.innerText = "Buscando...";
-            
-            
-            // Adicionamos um cabeçalho para o celular ser aceito pela API
-            const buscaCompleta = `${enderecoCliente}, São Caetano do Sul, SP`;
-            
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaCompleta)}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'User-Agent': 'MenezesSalgadosApp' // Isso identifica a sua requisição e evita o bloqueio
-                }
-            });
-
-            if (!response.ok) throw new Error();
-
-            const data = await response.json();
-
-            if (data && data.length > 0) {
-                // SUAS COORDENADAS (Rua General Estilac leal 160)
-                const minhaLat = -23.647524; 
-                const minhaLon = -46.570151;
-
-                const latPassada = parseFloat(data[0].lat);
-                const lonPassada = parseFloat(data[0].lon);
-
-                const distancia = calcularDistanciaKM(minhaLat, minhaLon, latPassada, lonPassada);
-                
-                // Lógica de Preço
-                const horaAtual = new Date().getHours();
-                let precoPorKm = (horaAtual >= 15) ? 6.80 : 4.45;
-
-                // Cálculo Final (Mínimo de R$ 8,00)
-                deliveryFee = Math.max(8.00, distancia * precoPorKm);
-
-                // Exibição na tela
-                shippingValueDisplay.innerHTML = `
-                    <div class="flex flex-col">
-                        <span>📍 Distância: <strong>${distancia.toFixed(2)} km</strong></span>
-                        <span>🚚 Frete: <strong>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</strong></span>
-                    </div>
-                `;
-                shippingValueDisplay.classList.remove("hidden");
-                addressWarn.classList.add("hidden");
-                addressInput.classList.remove("border-red-500");
-
-                // Atualiza o total do carrinho com a nova taxa
-                updateCartModal();
-
-            } else {
-                alert("Endereço não localizado. Verifique o nome da rua e o número.");
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Erro ao calcular frete. Verifique sua conexão com a internet.");
-        } finally {
-            calcShippingBtn.disabled = false;
-            calcShippingBtn.innerText = "Calcular";
-        }
-    });
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
 loadProducts();
