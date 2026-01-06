@@ -404,12 +404,92 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
+// Função para calcular a distância entre dois pontos (Fórmula de Haversine)
 function calcularDistanciaKM(lat1, lon1, lat2, lon2) {
-    const R = 6371; 
+    const R = 6371; // Raio da Terra em KM
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Lógica do Botão Calcular
+if (calcShippingBtn) {
+    calcShippingBtn.addEventListener("click", async (event) => {
+        event.preventDefault(); // ESSENCIAL para Android não dar refresh
+
+        const enderecoCliente = addressInput.value.trim();
+        
+        if (enderecoCliente === "") {
+            addressWarn.classList.remove("hidden");
+            addressInput.classList.add("border-red-500");
+            return;
+        }
+
+        try {
+            calcShippingBtn.disabled = true;
+            calcShippingBtn.innerText = "Buscando...";
+            
+            // Adicionamos "São Caetano do Sul" automaticamente para melhorar a precisão no GPS
+            const buscaEstendida = `${enderecoCliente}, São Caetano do Sul, SP`;
+
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaEstendida)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'MenezesSalgadosApp' // Ajuda a evitar bloqueios em redes móveis
+                }
+            });
+
+            if (!response.ok) throw new Error();
+
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                // SUAS COORDENADAS (Rua General Estilac leal 160)
+                const minhaLat = -23.647524; 
+                const minhaLon = -46.570151;
+
+                const latPassada = parseFloat(data[0].lat);
+                const lonPassada = parseFloat(data[0].lon);
+
+                const distancia = calcularDistanciaKM(minhaLat, minhaLon, latPassada, lonPassada);
+                
+                // Lógica de Preço
+                const horaAtual = new Date().getHours();
+                let precoPorKm = (horaAtual >= 15) ? 6.80 : 4.45;
+
+                // Cálculo Final (Mínimo de R$ 8,00)
+                deliveryFee = Math.max(8.00, distancia * precoPorKm);
+
+                // Exibição na tela
+                shippingValueDisplay.innerHTML = `
+                    <div class="flex flex-col">
+                        <span>📍 Distância: <strong>${distancia.toFixed(2)} km</strong></span>
+                        <span>🚚 Frete: <strong>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</strong></span>
+                    </div>
+                `;
+                shippingValueDisplay.classList.remove("hidden");
+                addressWarn.classList.add("hidden");
+                addressInput.classList.remove("border-red-500");
+
+                // Atualiza o total do carrinho com a nova taxa
+                updateCartModal();
+
+            } else {
+                alert("Endereço não localizado. Verifique o nome da rua e o número.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao calcular frete. Verifique sua conexão com a internet.");
+        } finally {
+            calcShippingBtn.disabled = false;
+            calcShippingBtn.innerText = "Calcular";
+        }
+    });
 }
 
 loadProducts();
