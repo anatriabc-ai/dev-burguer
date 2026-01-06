@@ -276,17 +276,41 @@ if(btnPickup){
     });
 }
 
-if(btnDelivery){
-    btnDelivery.addEventListener("click", () => {
-        isPickup = false;
-        btnDelivery.classList.add("bg-green-500", "text-white");
-        btnPickup.classList.remove("bg-green-500", "text-white");
-        addressContainer.classList.remove("hidden");
-        pickupOptionsContainer.classList.add("hidden");
-        pickupMethod = "";
-        updateCartModal();
-    });
-}
+
+// Clique em Entrega
+btnDelivery.addEventListener("click", () => {
+    // Estilo dos botões (iPhone Fix)
+    btnDelivery.classList.add("bg-green-500", "text-white");
+    btnDelivery.classList.remove("border-gray-300");
+    btnPickup.classList.remove("bg-green-500", "text-white");
+    btnPickup.classList.add("border-gray-300");
+
+    // Mostra endereço, esconde opções de retirada
+    addressContainer.classList.remove("hidden");
+    pickupOptionsContainer.classList.add("hidden");
+    
+    // Reseta o frete se necessário (opcional)
+    deliveryFee = 0; 
+    updateCartModal();
+});
+
+// Clique em Retirada
+btnPickup.addEventListener("click", () => {
+    // Estilo dos botões (iPhone Fix)
+    btnPickup.classList.add("bg-green-500", "text-white");
+    btnPickup.classList.remove("border-gray-300");
+    btnDelivery.classList.remove("bg-green-500", "text-white");
+    btnDelivery.classList.add("border-gray-300");
+
+    // Esconde endereço, mostra opções de retirada
+    addressContainer.classList.add("hidden");
+    pickupOptionsContainer.classList.remove("hidden");
+    
+    // Zera o frete na retirada
+    deliveryFee = 0;
+    updateCartModal();
+});
+
 
 if(btnPickupSelf) btnPickupSelf.addEventListener("click", () => { pickupMethod = "O próprio cliente"; btnPickupSelf.classList.add("bg-green-500", "text-white"); btnPickupApp.classList.remove("bg-green-500", "text-white"); });
 if(btnPickupApp) btnPickupApp.addEventListener("click", () => { pickupMethod = "Motorista de App (Uber/99)"; btnPickupApp.classList.add("bg-green-500", "text-white"); btnPickupSelf.classList.remove("bg-green-500", "text-white"); });
@@ -433,14 +457,15 @@ if (calcShippingBtn) {
             calcShippingBtn.disabled = true;
             calcShippingBtn.innerText = "Buscando...";
             
-            // Adicionamos "São Caetano do Sul" automaticamente para melhorar a precisão no GPS
-            const buscaEstendida = `${enderecoCliente}, São Caetano do Sul, SP`;
-
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaEstendida)}`, {
+            
+            // Adicionamos um cabeçalho para o celular ser aceito pela API
+            const buscaCompleta = `${enderecoCliente}, São Caetano do Sul, SP`;
+            
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaCompleta)}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'User-Agent': 'MenezesSalgadosApp' // Ajuda a evitar bloqueios em redes móveis
+                    'User-Agent': 'MenezesSalgadosApp' // Isso identifica a sua requisição e evita o bloqueio
                 }
             });
 
