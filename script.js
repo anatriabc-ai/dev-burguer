@@ -291,30 +291,57 @@ if(btnDelivery){
 if(btnPickupSelf) btnPickupSelf.addEventListener("click", () => { pickupMethod = "O próprio cliente"; btnPickupSelf.classList.add("bg-green-500", "text-white"); btnPickupApp.classList.remove("bg-green-500", "text-white"); });
 if(btnPickupApp) btnPickupApp.addEventListener("click", () => { pickupMethod = "Motorista de App (Uber/99)"; btnPickupApp.classList.add("bg-green-500", "text-white"); btnPickupSelf.classList.remove("bg-green-500", "text-white"); });
 
+// Função para calcular frete adaptada para Android e iPhone
 if (calcShippingBtn) {
-    calcShippingBtn.addEventListener("click", async () => {
-        if (addressInput.value === "") { addressWarn.classList.remove("hidden"); return; }
+    calcShippingBtn.addEventListener("click", async (event) => {
+        event.preventDefault(); // Impede recarregamento no Android
+
         const enderecoCliente = addressInput.value;
-        const minhaLat = -23.647524;
-        const minhaLon = -46.570151;
+        if (enderecoCliente === "") { 
+            addressWarn.classList.remove("hidden"); 
+            return; 
+        }
 
         try {
+            calcShippingBtn.disabled = true;
             calcShippingBtn.innerText = "Calculando...";
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCliente)}`);
+            
+            // Forçamos o uso de HTTPS e adicionamos cabeçalhos para evitar bloqueio em redes móveis (4G/5G)
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCliente)}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+
             const data = await response.json();
 
-            if (data.length > 0) {
+            if (data && data.length > 0) {
+                // Coordenadas da sua loja (Verifique se estão corretas)
+                const minhaLat = -23.647524;
+                const minhaLon = -46.570151;
+
                 const distancia = calcularDistanciaKM(minhaLat, minhaLon, parseFloat(data[0].lat), parseFloat(data[0].lon));
+                
+                // Lógica de preço: R$ 4.45 base, R$ 6.80 após as 15h, mínimo de R$ 8.00
                 const hora = new Date().getHours();
                 let precoPorKm = (hora >= 15) ? 6.80 : 4.45;
-
                 deliveryFee = Math.max(8.00, distancia * precoPorKm);
-                updateCartModal();
+                
+                // Atualiza a tela
                 shippingValueDisplay.classList.remove("hidden");
                 shippingValueDisplay.innerText = `Distância: ${distancia.toFixed(2)}km | Frete: R$ ${deliveryFee.toFixed(2)}`;
                 addressWarn.classList.add("hidden");
-            } else { alert("Endereço não encontrado."); }
-        } catch (e) { console.error(e); } finally { calcShippingBtn.innerText = "Calcular"; }
+                
+                // Força a atualização do total no carrinho
+                updateCartModal();
+
+            } else { 
+                alert("Endereço não encontrado! Dica: Digite Rua, Número e Cidade (SCS)."); 
+            }
+        } catch (e) { 
+            alert("Erro de conexão. Verifique se o seu GPS ou Internet estão ativos."); 
+        } finally { 
+            calcShippingBtn.disabled = false;
+            calcShippingBtn.innerText = "Calcular"; 
+        }
     });
 }
 
